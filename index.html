@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>RNG Game</title>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <h1>RNG Game</h1>
+    <p>Choice <span id="choice"></span>/50 (<span id="remaining"></span> left)</p>
+    <p>Click these buttons or press left/right.</p>
+    <p>
+      <button id="left">Left</button>
+      <button id="right">Right</button>
+    </p>
+    <div>
+      <canvas id="canvas" height="8" width="400"></canvas>
+    </div>
+    <div>
+      <canvas id="botCanvas" height="8" width="400"></canvas>
+    </div>
+    <p id="result"></p>
+
+    <script>
+      var v = [100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 99.998, 99.989, 99.964, 99.887, 99.692, 99.279, 98.428, 96.863, 94.132, 90.017, 83.989, 75.96, 66.504, 55.708, 44.379, 33.578, 23.937, 16.092, 10.07, 5.928, 3.262, 1.643, 0.781, 0.343, 0.121, 0.038, 0.01, 0.002, 0.001, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+
+      var canvas = document.getElementById("canvas");
+      var botCanvas = document.getElementById("botCanvas");
+      var userInput = [];
+      var isDone = false;
+
+      function updateStateOnPress(key) {
+        userInput.push(key);
+        ++choice;
+        rerender();
+      }
+
+      function showInput(input, cvs) {
+        for (var i = 0; i < input.length; ++i) {
+          var ctx = cvs.getContext("2d");
+          ctx.fillStyle = input[i] ? "blue" : "red";
+          ctx.fillRect(8 * i, 0, 8, 8);
+        }
+      }
+
+      function calculateBotInput() {
+        var memory = {};
+        var res = [];
+
+        for (var i = 0; i < userInput.length; ++i) {
+          // Guess
+          var prob = 0.5;
+          var currCode = "";
+          for (var j = 1; j <= 4; ++j) {
+            if (i - j < 0) break;
+
+            var curr = userInput[i - j];
+            currCode += curr ? "T" : "F";
+            if (memory[currCode] === undefined) {
+              break;
+            }
+
+            prob += 0.1 * j * (0.5 - memory[currCode][0] / memory[currCode][1]);
+          }
+
+          res.push(Math.random() >= prob);
+
+          // Recompute memory
+          var code = "";
+          for (var j = 1; j <= 4; ++j) {
+            if (i - j < 0) break;
+
+            var curr = userInput[i - j];
+            code += curr ? "T" : "F";
+            if (memory[code] === undefined) {
+              memory[code] = [0, 0];
+            }
+
+            memory[code][0] += curr ? 1 : 0;
+            memory[code][1] += 1;
+          }
+        }
+
+        return res;
+      }
+
+      function rerender() {
+        if (isDone) return;
+
+        if (userInput.length === 50) {
+          showInput(userInput, canvas);
+          var botInput = calculateBotInput();
+          showInput(botInput, botCanvas);
+
+          isDone = true;
+          document.getElementById("remaining").innerText = 50 - userInput.length;
+
+          var match = 0;
+          for (var i = 0; i < userInput.length; ++i) {
+            match += (userInput[i] === botInput[i]) ? 1 : 0;
+          }
+
+          document.getElementById("result").innerText = "Match: " + match + "/50. If you are truly random, you get >=" + match + " matches " + v[match] + "% of the time.";
+          return;
+        }
+
+        document.getElementById("choice").innerText = userInput.length + 1;
+        document.getElementById("remaining").innerText = 50 - userInput.length;
+        showInput(userInput, canvas);
+      }
+
+      document.getElementById("left").onclick = function() { updateStateOnPress(true); };
+      document.getElementById("right").onclick = function() { updateStateOnPress(false); };
+      document.addEventListener("keydown", function(e) {
+        if (e.code === "ArrowLeft") {
+          updateStateOnPress(true);
+        } else if (e.code === "ArrowRight") {
+          updateStateOnPress(false);
+        }
+      });
+      rerender();
+    </script>
+  </body>
+</html>
